@@ -1,9 +1,9 @@
 import React from "react";
-import { Layer, Rect, Stage } from "react-konva";
+import { Layer, Stage } from "react-konva";
 import { useWindowSize } from "./hooks";
 import Wave from "./Wave";
 
-export const height = 1000;
+export const height = 500;
 export const waveCount = 4;
 
 function App() {
@@ -11,7 +11,7 @@ function App() {
   return (
     <Stage width={width} height={height}>
       <Layer>
-        <Rect width={width} height={height} fill="#ccc" />
+        {/* <Rect width={width} height={height} fill="#ccc" /> */}
         {[...Array(waveCount)].map((_, i) => (
           <Wave key={i} index={i} width={width} />
         ))}

@@ -22,18 +22,18 @@ function Wave({ index, width }: Props) {
   const [line, setLine] = useState(startLine);
   const lineRef = useRef(line);
   lineRef.current = line;
-  const [waveParams, setWaveParams] = useState<[number, number, number, number][]>(generateWaveParams());
+  const [waveParams] = useState<[number, number, number, number][]>(generateWaveParams());
 
   useEffect(() => {
     setInterval(() => {
-      const nextLine = (startLine + performance.now() / 10) % height;
-      if (nextLine < lineRef.current) setWaveParams(generateWaveParams());
+      const nextLine = startLine + performance.now() / 10;
+      // if (nextLine < lineRef.current) setWaveParams(generateWaveParams());
       setLine(nextLine);
     }, 20);
     // eslint-disable-next-line
   }, []);
 
-  const opacity = 1 - line / height;
+  const opacity = 0.8 - startLine / height;
   const fill = `rgba(0,191,255,${opacity})`;
 
   return (
@@ -51,7 +51,7 @@ function Wave({ index, width }: Props) {
           const y = waveParams
             .map(([am, tp, deg, speed]) => am * Math.sin((Math.PI / tp) * (deg + x) + line * speed))
             .reduce((a, b) => a + b);
-          context.lineTo(x, y + line);
+          context.lineTo(x, y + startLine);
         }
 
         context.lineTo(width, 0);
