@@ -1,40 +1,35 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Shape } from "react-konva";
 import { height, waveCount } from "./App";
 
 type Props = {
   index: number;
   width: number;
+  color: string;
 };
 
 const randomRange = (range: number): number => -range + 2 * range * Math.random();
 
 const waveRandomParams = (am: number, tp: number): [number, number, number, number] => {
-  return [am + randomRange(am / 4), tp + randomRange(tp / 4), randomRange(Math.PI), randomRange(0.02)];
+  return [am + randomRange(am / 4), tp + randomRange(tp / 4), randomRange(Math.PI), randomRange(0.002)];
 };
 
 const generateWaveParams = (): [number, number, number, number][] => {
-  return [waveRandomParams(25, 600), waveRandomParams(15, 400), waveRandomParams(10, 200)];
+  return [waveRandomParams(15, 600), waveRandomParams(10, 400), waveRandomParams(8, 200)];
 };
 
-function Wave({ index, width }: Props) {
-  const startLine = (height * index) / waveCount;
-  const [line, setLine] = useState(startLine);
-  const lineRef = useRef(line);
-  lineRef.current = line;
-  const [waveParams] = useState<[number, number, number, number][]>(generateWaveParams());
+const baseLine = 80;
+
+function Wave({ index, width, color }: Props) {
+  const [time, setTime] = useState(performance.now());
+  const waveParams = useMemo(generateWaveParams, []);
 
   useEffect(() => {
-    setInterval(() => {
-      const nextLine = startLine + performance.now() / 10;
-      // if (nextLine < lineRef.current) setWaveParams(generateWaveParams());
-      setLine(nextLine);
-    }, 20);
+    setInterval(() => setTime(performance.now()), 20);
     // eslint-disable-next-line
   }, []);
 
-  const opacity = 0.8 - startLine / height;
-  const fill = `rgba(0,191,255,${opacity})`;
+  const startLine = baseLine + (height - baseLine) * (index / waveCount) + 30 * Math.sin(time * 0.0007);
 
   return (
     <Shape
@@ -42,14 +37,14 @@ function Wave({ index, width }: Props) {
       y={0}
       width={width}
       height={height}
-      fill={fill}
+      fill={color}
       sceneFunc={(context, shape) => {
         context.beginPath();
-        context.moveTo(0, line);
+        context.moveTo(0, startLine);
 
         for (let x = 0; x <= width; x++) {
           const y = waveParams
-            .map(([am, tp, deg, speed]) => am * Math.sin((Math.PI / tp) * (deg + x) + line * speed))
+            .map(([am, tp, deg, speed]) => am * Math.sin((Math.PI / tp) * (deg + x) + time * speed))
             .reduce((a, b) => a + b);
           context.lineTo(x, y + startLine);
         }
