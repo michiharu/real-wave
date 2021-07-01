@@ -18,11 +18,13 @@ const generateWaveParams = (): [number, number, number, number][] => {
   return [waveRandomParams(40, 1000), waveRandomParams(20, 600), waveRandomParams(15, 300)];
 };
 
+const waveParams = generateWaveParams();
+
 const baseLine = 100;
 
 function Wave({ index, width, color }: Props) {
   const [time, setTime] = useState(performance.now());
-  const waveParams = useMemo(generateWaveParams, []);
+  // const waveParams = useMemo(generateWaveParams, []);
 
   useEffect(() => {
     setInterval(() => setTime(performance.now()), 20);
@@ -44,7 +46,7 @@ function Wave({ index, width, color }: Props) {
 
         for (let x = 0; x <= width; x++) {
           const y = waveParams
-            .map(([am, tp, deg, speed]) => am * Math.sin((Math.PI / tp) * (deg + x) + time * speed))
+            .map(([am, tp, deg, speed]) => am * Math.sin((Math.PI / tp) * (deg + x) + (time * speed * index) / 3))
             .reduce((a, b) => a + b);
           context.lineTo(x, y + startLine);
         }
