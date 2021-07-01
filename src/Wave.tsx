@@ -29,7 +29,7 @@ function Wave({ index, width, color }: Props) {
     // eslint-disable-next-line
   }, []);
 
-  const startLine = baseLine + (height - baseLine * 2) * (index / waveCount) + 40 * Math.sin(time * 0.0008);
+  const startLine = baseLine + (height - baseLine * 2) * (index / waveCount) + 25 * Math.sin(time * 0.0008);
 
   return (
     <Shape
