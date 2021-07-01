@@ -15,10 +15,10 @@ const waveRandomParams = (am: number, tp: number): [number, number, number, numb
 };
 
 const generateWaveParams = (): [number, number, number, number][] => {
-  return [waveRandomParams(15, 600), waveRandomParams(10, 400), waveRandomParams(8, 200)];
+  return [waveRandomParams(40, 1000), waveRandomParams(20, 600), waveRandomParams(15, 300)];
 };
 
-const baseLine = 80;
+const baseLine = 100;
 
 function Wave({ index, width, color }: Props) {
   const [time, setTime] = useState(performance.now());
@@ -29,7 +29,7 @@ function Wave({ index, width, color }: Props) {
     // eslint-disable-next-line
   }, []);
 
-  const startLine = baseLine + (height - baseLine) * (index / waveCount) + 30 * Math.sin(time * 0.0007);
+  const startLine = baseLine + (height - baseLine * 2) * (index / waveCount) + 40 * Math.sin(time * 0.0008);
 
   return (
     <Shape
