@@ -1,41 +1,17 @@
-import React, { useEffect, useRef, useState } from "react";
+import React from "react";
 import { Shape } from "react-konva";
-import { height, waveCount } from "./App";
 
-type Props = {
-  index: number;
+export type WaveParams = [number, number, number, number];
+
+export type WaveProps = {
   width: number;
+  height: number;
+  points: number[];
+  tailPoints: number[];
+  fill: string;
 };
 
-const randomRange = (range: number): number => -range + 2 * range * Math.random();
-
-const waveRandomParams = (am: number, tp: number): [number, number, number, number] => {
-  return [am + randomRange(am / 4), tp + randomRange(tp / 4), randomRange(Math.PI), randomRange(0.02)];
-};
-
-const generateWaveParams = (): [number, number, number, number][] => {
-  return [waveRandomParams(25, 600), waveRandomParams(15, 400), waveRandomParams(10, 200)];
-};
-
-function Wave({ index, width }: Props) {
-  const startLine = (height * index) / waveCount;
-  const [line, setLine] = useState(startLine);
-  const lineRef = useRef(line);
-  lineRef.current = line;
-  const [waveParams, setWaveParams] = useState<[number, number, number, number][]>(generateWaveParams());
-
-  useEffect(() => {
-    setInterval(() => {
-      const nextLine = (startLine + performance.now() / 10) % height;
-      if (nextLine < lineRef.current) setWaveParams(generateWaveParams());
-      setLine(nextLine);
-    }, 20);
-    // eslint-disable-next-line
-  }, []);
-
-  const opacity = 1 - line / height;
-  const fill = `rgba(0,191,255,${opacity})`;
-
+function Wave({ width, height, points, tailPoints, fill }: WaveProps) {
   return (
     <Shape
       x={0}
@@ -45,17 +21,9 @@ function Wave({ index, width }: Props) {
       fill={fill}
       sceneFunc={(context, shape) => {
         context.beginPath();
-        context.moveTo(0, line);
-
-        for (let x = 0; x <= width; x++) {
-          const y = waveParams
-            .map(([am, tp, deg, speed]) => am * Math.sin((Math.PI / tp) * (deg + x) + line * speed))
-            .reduce((a, b) => a + b);
-          context.lineTo(x, y + line);
-        }
-
-        context.lineTo(width, 0);
-        context.lineTo(0, 0);
+        context.moveTo(0, tailPoints[0]);
+        tailPoints.forEach((y, x) => context.lineTo(x, y));
+        points.reverse().forEach((y, x) => context.lineTo(width - x, y));
         context.fillStrokeShape(shape);
       }}
     />
