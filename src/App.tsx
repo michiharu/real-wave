@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Layer, Rect, Stage } from "react-konva";
 import { useWindowSize } from "./hooks";
+import Sparkle, { SparkleProps } from "./Sparkle";
 import Wave, { WaveParams, WaveProps } from "./Wave";
 
 const waveCount = 6;
@@ -8,7 +9,15 @@ const whiteRate = 0.7;
 const disappearRate = 0.76;
 const slowDownRate = 0.6;
 
+const sparkleCount = 100;
+const lifespan = 1000;
+
 const randomRange = (range: number): number => -range + 2 * range * Math.random();
+const randomInt = (int: number): number => Math.floor(int * Math.random());
+const randomIntWeighted = (weights: number[]): number => {
+  const rand = Math.random();
+  return weights.map((r) => rand < r).indexOf(true);
+};
 
 const waveRandomParams = (am: number, tp: number): WaveParams => {
   return [am + randomRange(am / 4), tp + randomRange(tp / 4), randomRange(Math.PI), randomRange(0.0005)];
@@ -54,37 +63,55 @@ const wave2: RGB = [102, 244, 255];
 const wave3: RGB = [200, 250, 255];
 const wave4: RGB = [132, 132, 132];
 
-const calcFill = (line: number, endLine: number): string => {
+const calcFill = (line: number, endLine: number): [string, number] => {
   const rate = line / endLine;
   if (rate < whiteRate) {
     const [r, g, b] = calcRGB(wave1, wave2, rate / whiteRate);
-    return `rgba(${r},${g},${b},1)`;
+    return [`rgba(${r},${g},${b},1)`, 1];
   }
 
   if (rate < disappearRate) {
     const [r, g, b] = calcRGB(wave2, wave3, (rate - whiteRate) / (disappearRate - whiteRate));
-    return `rgba(${r},${g},${b},1)`;
+    return [`rgba(${r},${g},${b},1)`, 1];
   }
   const [r, g, b] = calcRGB(wave3, wave4, (rate - disappearRate) / (1 - disappearRate));
   const o = (1 - rate) / (1 - disappearRate);
-  return `rgba(${r},${g},${b},${o})`;
+  return [`rgba(${r},${g},${b},${o})`, o];
 };
 
-type WavesState = { line: number; params: WaveParams[]; fill: string };
+type WaveState = { line: number; params: WaveParams[]; fill: string; opacity: number };
+type SparkleState = { wIndex: number; x: number; yDelta: number; sides: number; life: number; radius: number };
 
-const initialWavesState = (endLine: number): WavesState[] => {
+const initialWavesState = (endLine: number): WaveState[] => {
   return [...Array(waveCount)].map((_, i) => {
     const line = (endLine * i) / waveCount;
-    const fill = calcFill(line, endLine);
-    return { line, params: generateWaveParams(), fill };
+    const [fill, opacity] = calcFill(line, endLine);
+    return { line, params: generateWaveParams(), fill, opacity };
   });
+};
+
+const generatorSparkleState = (width: number, beforeLife?: number): SparkleState => {
+  const weights = [0.3, 0.7, 0.9, 0.96, 0.98, 1];
+  if (weights.length !== waveCount) throw new Error();
+  const wIndex = randomIntWeighted(weights);
+  const x = randomInt(width + 1);
+  const yDelta = 10 - wIndex * 2 + randomRange(20);
+  const sides = 5 + randomInt(3);
+  const life = beforeLife ?? randomInt(lifespan);
+  const radius = 2 + randomInt(8);
+  return { wIndex, x, yDelta, sides, life, radius };
+};
+
+const initialSparklesState = (width: number): SparkleState[] => {
+  return [...Array(sparkleCount)].map(() => generatorSparkleState(width));
 };
 
 function App() {
   const { width, height } = useWindowSize();
   const endLine = height * 0.8;
   const [times, setTimes] = useState<[number, number]>([performance.now(), performance.now()]);
-  const [wavesState, setWavesState] = useState<WavesState[]>(initialWavesState(endLine));
+  const [wavesState, setWavesState] = useState<WaveState[]>(initialWavesState(endLine));
+  const [sparklesState, setSparklesState] = useState<SparkleState[]>(initialSparklesState(width));
 
   useEffect(() => {
     setInterval(() => setTimes((state) => [performance.now(), state[0]]), 50);
@@ -99,32 +126,52 @@ function App() {
         const line = (w.line + elapsed / 25) % endLine;
         if (line < w.line) needSwap = true;
         const params = line < w.line ? generateWaveParams() : w.params;
-        const fill = calcFill(line, endLine);
-        return { line, params, fill };
+        const [fill, opacity] = calcFill(line, endLine);
+        return { line, params, fill, opacity };
       });
       if (!needSwap) return waves;
       return [waves[waves.length - 1], ...waves.slice(0, waves.length - 1)];
     });
-  }, [times, endLine]);
+    setSparklesState((state) =>
+      state.map((s) => {
+        const life = s.life - elapsed;
+        if (life < 0) return generatorSparkleState(width, lifespan - life);
+        return { ...s, life };
+      })
+    );
+  }, [times, endLine, width]);
 
   const wavePoints: number[][] = wavesState.map(({ line, params }) => calcPoints(width, line, endLine, params));
 
-  const props: WaveProps[] = wavesState
-    .map(({ fill }, i) => ({
+  const waveProps: (WaveProps & { opacity: number })[] = wavesState
+    .map(({ fill, opacity }, i) => ({
       width,
       height,
       points: wavePoints[i],
       tailPoints: i === 0 ? bottomPoints(width) : wavePoints[i - 1],
       fill,
+      opacity,
     }))
     .reverse();
+
+  const sparkleProps: SparkleProps[] = sparklesState.map((s) => {
+    const { wIndex, yDelta, life, ...other } = s;
+    const wave = waveProps[s.wIndex];
+    const y = wave.points[s.x] - yDelta;
+    const opacity = (wave.opacity * life) / lifespan;
+    const radius = (1 - opacity) * s.radius;
+    return { ...other, y, opacity, radius };
+  });
 
   return (
     <Stage width={width} height={height}>
       <Layer>
         <Rect width={width} height={height} fill="#ddc" />
-        {props.map((p, i) => (
+        {waveProps.map((p, i) => (
           <Wave key={i} {...p} />
+        ))}
+        {sparkleProps.map((s, i) => (
+          <Sparkle key={i} {...s} />
         ))}
       </Layer>
     </Stage>
